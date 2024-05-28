@@ -6,8 +6,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use bb8::{Pool, PooledConnection};
-use bb8_postgres::PostgresConnectionManager;
 use tokio_postgres::NoTls;
 
 use dotenv::dotenv;
@@ -82,6 +80,7 @@ async fn update_board(
 
             tracing::info!("B");
 
+            
             // Connect to the database.
             let (client, connection) =
                 tokio_postgres::connect(&database_url, NoTls)
@@ -107,7 +106,7 @@ async fn update_board(
                 .unwrap();
 
             tracing::info!("E");
-            
+
             // And then check that we got back the same string we sent over.
             let value: &str = rows[0].get(0);
 
@@ -131,7 +130,6 @@ async fn update_board(
 
 
 
-type ConnectionPool = Pool<PostgresConnectionManager<NoTls>>;
 
 
 /// Utility function for mapping any error into a `500 Internal Server Error`
