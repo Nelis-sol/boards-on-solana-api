@@ -91,7 +91,7 @@ async fn update_board(
 
                     tracing::info!("Start query");
                     let row = conn
-                        .query_one("select 1 + 1", &[])
+                        .query_one("SELECT * FROM helius;", &[])
                         .await
                         .map_err(internal_error)
                         .unwrap();
