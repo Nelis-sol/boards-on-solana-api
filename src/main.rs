@@ -57,6 +57,7 @@ async fn update_board(
 ) -> impl IntoResponse {
     
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    tracing::info!("{}", database_url);
 
     for transaction in payload.0 {
 
@@ -75,13 +76,19 @@ async fn update_board(
 
         // Process and log the state logs
         for log in state_logs {
+            tracing::info!("A");
+
             let log_message = log.trim_start_matches("Program log: ");
+
+            tracing::info!("B");
 
             // Connect to the database.
             let (client, connection) =
                 tokio_postgres::connect(&database_url, NoTls)
                     .await
                     .expect("could not connect to databse");
+
+            tracing::info!("C");
 
             // The connection object performs the actual communication with the database,
             // so spawn it off to run on its own.
@@ -91,12 +98,16 @@ async fn update_board(
                 }
             });
 
+            tracing::info!("D");
+
             // Now we can execute a simple statement that just returns its parameter.
             let rows = client
                 .query("SELECT * FROM helius", &[])
                 .await
                 .unwrap();
 
+            tracing::info!("E");
+            
             // And then check that we got back the same string we sent over.
             let value: &str = rows[0].get(0);
 
