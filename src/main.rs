@@ -82,14 +82,19 @@ async fn update_board(
                 Ok(decoded_board) => {
                     // tracing::info!("{:?}", decoded_board.Board);
 
+                    tracing::info!("A");
                     let config = tokio_postgres::config::Config::from_str(&database_url).unwrap();
+
+                    tracing::info!("B");
 
                     // set up connection pool
                     let manager = PostgresConnectionManager::new(config, NoTls);
+                    tracing::info!("C");
                     let pool = Pool::builder().build(manager).await.unwrap();
+                    tracing::info!("D");
                     let conn = pool.get().await.map_err(internal_error).unwrap();
+                    tracing::info!("E");
 
-                    tracing::info!("Start query");
                     let row = conn
                         .query_one("SELECT * FROM helius;", &[])
                         .await
