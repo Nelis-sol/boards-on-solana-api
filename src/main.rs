@@ -80,7 +80,7 @@ async fn update_board(
             // Deserialize JSON log messages
             match serde_json::from_str::<EncodedBoard>(log_message) {
                 Ok(decoded_board) => {
-                    tracing::info!("{:?}", decoded_board.Board);
+                    // tracing::info!("{:?}", decoded_board.Board);
 
                     let config = tokio_postgres::config::Config::from_str(&database_url).unwrap();
 
@@ -89,6 +89,7 @@ async fn update_board(
                     let pool = Pool::builder().build(manager).await.unwrap();
                     let conn = pool.get().await.map_err(internal_error).unwrap();
 
+                    tracing::info!("Start query");
                     let row = conn
                         .query_one("select 1 + 1", &[])
                         .await
