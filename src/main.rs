@@ -77,31 +77,36 @@ async fn update_board(
         for log in state_logs {
             let log_message = log.trim_start_matches("Program log: ");
 
+            // Connect to the database.
+            let (client, connection) =
+                tokio_postgres::connect(&database_url, NoTls)
+                    .await
+                    .expect("could not connect to databse");
+
+            // The connection object performs the actual communication with the database,
+            // so spawn it off to run on its own.
+            tokio::spawn(async move {
+                if let Err(e) = connection.await {
+                    eprintln!("connection error: {}", e);
+                }
+            });
+
+            // Now we can execute a simple statement that just returns its parameter.
+            let rows = client
+                .query("SELECT * FROM helius", &[])
+                .await
+                .unwrap();
+
+            // And then check that we got back the same string we sent over.
+            let value: &str = rows[0].get(0);
+
+            tracing::info!("Query result: {}", value);
+
             // Deserialize JSON log messages
             match serde_json::from_str::<EncodedBoard>(log_message) {
                 Ok(decoded_board) => {
+
                     // tracing::info!("{:?}", decoded_board.Board);
-
-                    tracing::info!("A");
-                    let config = tokio_postgres::config::Config::from_str(&database_url).unwrap();
-
-                    tracing::info!("B");
-
-                    // set up connection pool
-                    let manager = PostgresConnectionManager::new(config, NoTls);
-                    tracing::info!("C");
-                    let pool = Pool::builder().build(manager).await.unwrap();
-                    tracing::info!("D");
-                    let conn = pool.get().await.map_err(internal_error).unwrap();
-                    tracing::info!("E");
-
-                    let row = conn
-                        .query_one("SELECT * FROM helius;", &[])
-                        .await
-                        .map_err(internal_error)
-                        .unwrap();
-                    let two: i32 = row.try_get(0).map_err(internal_error).unwrap();
-                    tracing::info!("result of db query: {}", two);
 
                 },
                 Err(e) => tracing::info!("Failed to deserialize state log: {}, error: {}", log_message, e),
