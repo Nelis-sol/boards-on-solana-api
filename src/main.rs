@@ -2,10 +2,11 @@ use axum::{
     async_trait,
     extract::{FromRef, FromRequestParts, State, Path},
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
+use axum::body::Body;
 
 use dotenv::dotenv;
 use std::{env, str::FromStr};
@@ -82,11 +83,11 @@ async fn insert_raw_tx(
             .to_string();
 
 
-        let log_message = state_log.trim_start_matches("Program log: ");
+        let state_log_clean = state_log.trim_start_matches("Program log: ").to_string();
 
         let new_log = NewRawTx {
             ix: instruction_log,
-            tx: state_log,
+            tx: state_log_clean,
         };
 
         diesel::insert_into(raw_tx)
@@ -103,6 +104,8 @@ async fn get_board(
     Path(board_id): Path<i32>,
 ) -> impl IntoResponse {
 
+    tracing::info!("Request received: {:?}", board_id);
+
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let mut connection = PgConnection::establish(&database_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
@@ -114,6 +117,8 @@ async fn get_board(
         .load(&mut connection)
         .expect("Error loading posts");
 
+    let mut response: String = Default::default();
+
     for row in results {
         tracing::info!("{:#?}", &row);
 
@@ -121,6 +126,8 @@ async fn get_board(
 
         match serde_json::from_str::<EncodedBoard>(&tx_string) {
             Ok(decoded_board) => {
+
+                response = decoded_board.Board.currency;
 
                 tracing::info!("Board decoded");
         
@@ -130,6 +137,8 @@ async fn get_board(
             Err(e) => tracing::info!("Failed to deserialize state log, error: {}", e),
         }
     }
+
+    Response::new(Body::new(response))
 
 }
 
