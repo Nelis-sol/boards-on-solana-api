@@ -24,7 +24,9 @@ RUN apt-get update -y \
 && apt-get install -y --no-install-recommends openssl ca-certificates \
 && apt-get autoremove -y \
 && apt-get clean -y \
+&& apt-get install -y libpq5 \
 && rm -rf /var/lib/apt/lists/*
+
 
 COPY --from=builder /app/target/release/boards-on-solana-api boards-on-solana-api
 
