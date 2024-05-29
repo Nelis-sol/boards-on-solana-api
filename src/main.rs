@@ -63,11 +63,14 @@ async fn update_board(
         let mut connection = PgConnection::establish(&database_url)
             .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
 
+        
+        tracing::info!("{:?}", transaction);
+
         let instruction_log = transaction
             .meta
             .logMessages
             .iter()
-            .find(|msg| msg.starts_with("Program log: Instruction:"))
+            .find(|msg| msg.starts_with("Program logged: Instruction:"))
             .unwrap()
             .to_string();
 
@@ -75,7 +78,7 @@ async fn update_board(
             .meta
             .logMessages
             .iter()
-            .find(|msg| !msg.starts_with("Program log: Instruction:") && msg.starts_with("Program log"))
+            .find(|msg| !msg.starts_with("Program logged: Instruction:") && msg.starts_with("Program logged"))
             .unwrap()
             .to_string();
 
