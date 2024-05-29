@@ -60,7 +60,7 @@ pub struct Card {
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::raw_tx)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RawTx {
     pub id: i32,
     pub ix: Option<String>,

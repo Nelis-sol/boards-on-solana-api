@@ -104,7 +104,7 @@ async fn get_board(
     Path(board_id): Path<i32>,
 ) -> impl IntoResponse {
 
-    tracing::info!("Request received: {:?}", board_id);
+    tracing::info!("Request received for board: {:?}", board_id);
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let mut connection = PgConnection::establish(&database_url)
@@ -117,28 +117,12 @@ async fn get_board(
         .load(&mut connection)
         .expect("Error loading posts");
 
-    let mut response: String = Default::default();
+    let response = results[0].clone();
 
-    for row in results {
-        tracing::info!("{:#?}", &row);
+    tracing::info!("Response: {:?}", response.clone());
 
-        let tx_string = row.tx.expect("could not find tx in row");
+    Json(response).into_response()
 
-        match serde_json::from_str::<EncodedBoard>(&tx_string) {
-            Ok(decoded_board) => {
-
-                response = decoded_board.Board.currency;
-
-                tracing::info!("Board decoded");
-        
-                // tracing::info!("{:?}", decoded_board.Board);
-        
-            },
-            Err(e) => tracing::info!("Failed to deserialize state log, error: {}", e),
-        }
-    }
-
-    Response::new(Body::new(response))
 
 }
 
