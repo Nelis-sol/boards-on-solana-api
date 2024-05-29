@@ -57,49 +57,34 @@ async fn update_board(
     Json(payload): Json<RawTransactions>,
 ) -> impl IntoResponse {
 
-    let connection = &mut establish_connection();
-    let results = raw_tx
-        .limit(1)
-        .select(RawTx::as_select())
-        .load(connection)
-        .expect("Error loading posts");
-
-    for transaction in results {
-        tracing::info!("{:#?}", transaction);
-    }
-
-
     for transaction in payload.0 {
 
-        let (instruction_logs, state_logs): (Vec<&String>, Vec<&String>) = transaction
-            .meta
-            .logMessages
-            .iter()
-            .filter(|msg| msg.starts_with("Program log"))
-            .partition(|msg| msg.starts_with("Program log: Instruction:"));
-    
+        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        let mut connection = PgConnection::establish(&database_url)
+            .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
 
-        // Process and log the instruction logs
-        for log in instruction_logs {
-            tracing::info!("{}", log);
-        }
+        let instruction_log = transaction
+        .meta
+        .logMessages
+        .iter()
+        .find(|msg| msg.starts_with("Program log: Instruction:"));
 
-        // Process and log the state logs
-        for log in state_logs {
-            tracing::info!("A");
+    let state_log = transaction
+        .meta
+        .logMessages
+        .iter()
+        .find(|msg| !msg.starts_with("Program log: Instruction:") && msg.starts_with("Program log"));
 
-            let log_message = log.trim_start_matches("Program log: ");
+    // Insert into the database
+    let new_log = NewRawTx {
+        ix: instruction_log.map(|s| s.as_str()).expect("No instruction found"),
+        tx: state_log.map(|s| s.as_str()).expect("No state log found"),
+    };
 
-            // Deserialize JSON log messages
-            match serde_json::from_str::<EncodedBoard>(log_message) {
-                Ok(decoded_board) => {
+    diesel::insert_into(raw_tx)
+        .values(&new_log)
+        .execute(&mut connection).unwrap();
 
-                    // tracing::info!("{:?}", decoded_board.Board);
-
-                },
-                Err(e) => tracing::info!("Failed to deserialize state log: {}, error: {}", log_message, e),
-            }
-        }
 
     }
 
@@ -125,3 +110,33 @@ where
 {
     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
 }
+
+
+// For a get endpoint
+//  
+// let results = raw_tx
+//     .limit(1)
+//     .select(RawTx::as_select())
+//     .load(connection)
+//     .expect("Error loading posts");
+
+// for transaction in results {
+//     tracing::info!("{:#?}", transaction);
+// }
+
+    // // Process and log the state logs
+    // for log in state_logs {
+    //     tracing::info!("A");
+
+    //     let log_message = log.trim_start_matches("Program log: ");
+
+    //     // Deserialize JSON log messages
+    //     match serde_json::from_str::<EncodedBoard>(log_message) {
+    //         Ok(decoded_board) => {
+
+    //             // tracing::info!("{:?}", decoded_board.Board);
+
+    //         },
+    //         Err(e) => tracing::info!("Failed to deserialize state log: {}, error: {}", log_message, e),
+    //     }
+    // }

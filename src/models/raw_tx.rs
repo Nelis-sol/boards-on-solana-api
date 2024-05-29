@@ -63,6 +63,14 @@ pub struct Card {
 #[derive(Debug)]
 pub struct RawTx {
     pub id: i32,
+    pub ix: Option<String>,
     pub tx: Option<String>,
     pub ts: SystemTime,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = crate::schema::raw_tx)]
+pub struct NewRawTx<'a> {
+    pub ix: &'a str,
+    pub tx: &'a str,
 }
