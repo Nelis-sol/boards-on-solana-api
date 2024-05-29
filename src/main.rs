@@ -117,11 +117,32 @@ async fn get_board(
         .load(&mut connection)
         .expect("Error loading posts");
 
-    let response = results[0].clone();
+    let raw_transaction: RawTx = results[0].clone();
 
-    tracing::info!("Response: {:?}", response.clone());
+    let mut board: Board = Board {
+        seed: 12,
+        url: String::from("A"),
+        members: vec![String::from("None")],
+        lists: vec![List{list_id: 1, name: String::from("A"), bounty_payout_percentage: 0}],
+        cards: vec![Card{card_id: 1, list_id: 1, bounty: 0}],
+        currency: String::from("None")
+    };
 
-    Json(response).into_response()
+
+    match serde_json::from_str::<EncodedBoard>(&raw_transaction.tx.unwrap()) {
+        Ok(decoded_board) => {
+
+            board = decoded_board.Board.clone();
+
+            tracing::info!("{:?}", decoded_board.Board);
+
+        },
+        Err(e) => tracing::info!("Failed to deserialize state log, error: {}", e),
+    }
+
+    tracing::info!("Response: {:?}", board.clone());
+
+    Json(board).into_response()
 
 
 }

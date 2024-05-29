@@ -32,7 +32,7 @@ pub struct EncodedBoard {
     pub Board: Board,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Board {
     pub seed: u32,
     pub url: String,
@@ -42,14 +42,14 @@ pub struct Board {
     pub currency: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct List {
     pub list_id: u32,
     pub name: String,
     pub bounty_payout_percentage: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Card {
     pub card_id: u32,
     pub list_id: u32,
