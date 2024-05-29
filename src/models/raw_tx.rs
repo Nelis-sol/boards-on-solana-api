@@ -70,7 +70,7 @@ pub struct RawTx {
 
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::raw_tx)]
-pub struct NewRawTx<'a> {
-    pub ix: &'a str,
-    pub tx: &'a str,
+pub struct NewRawTx {
+    pub ix: String,
+    pub tx: String,
 }

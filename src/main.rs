@@ -64,26 +64,30 @@ async fn update_board(
             .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
 
         let instruction_log = transaction
-        .meta
-        .logMessages
-        .iter()
-        .find(|msg| msg.starts_with("Program log: Instruction:"));
+            .meta
+            .logMessages
+            .iter()
+            .find(|msg| msg.starts_with("Program log: Instruction:"))
+            .unwrap()
+            .to_string();
 
-    let state_log = transaction
-        .meta
-        .logMessages
-        .iter()
-        .find(|msg| !msg.starts_with("Program log: Instruction:") && msg.starts_with("Program log"));
+        let state_log = transaction
+            .meta
+            .logMessages
+            .iter()
+            .find(|msg| !msg.starts_with("Program log: Instruction:") && msg.starts_with("Program log"))
+            .unwrap()
+            .to_string();
 
-    // Insert into the database
-    let new_log = NewRawTx {
-        ix: instruction_log.map(|s| s.as_str()).expect("No instruction found"),
-        tx: state_log.map(|s| s.as_str()).expect("No state log found"),
-    };
+        // Insert into the database
+        let new_log = NewRawTx {
+            ix: instruction_log,
+            tx: state_log,
+        };
 
-    diesel::insert_into(raw_tx)
-        .values(&new_log)
-        .execute(&mut connection).unwrap();
+        diesel::insert_into(raw_tx)
+            .values(&new_log)
+            .execute(&mut connection).unwrap();
 
 
     }
