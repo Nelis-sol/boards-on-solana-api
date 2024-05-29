@@ -1,6 +1,6 @@
 use axum::{
     async_trait,
-    extract::{FromRef, FromRequestParts, State},
+    extract::{FromRef, FromRequestParts, State, Path},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
@@ -31,7 +31,8 @@ async fn main() {
     let app = Router::new()
         .route("/", get(root))
         .route("/health_check", get(health_check))
-        .route("/raw_tx", post(update_board));
+        .route("/raw_tx", post(insert_raw_tx))
+        .route("/board/:id", get(get_board));
 
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
@@ -53,7 +54,7 @@ async fn health_check() -> impl IntoResponse {
     StatusCode::OK
 }
 
-async fn update_board(
+async fn insert_raw_tx(
     Json(payload): Json<RawTransactions>,
 ) -> impl IntoResponse {
 
@@ -80,7 +81,9 @@ async fn update_board(
             .unwrap()
             .to_string();
 
-        // Insert into the database
+
+        let log_message = state_log.trim_start_matches("Program log: ");
+
         let new_log = NewRawTx {
             ix: instruction_log,
             tx: state_log,
@@ -95,6 +98,40 @@ async fn update_board(
     StatusCode::OK
 }
 
+
+async fn get_board(
+    Path(board_id): Path<i32>,
+) -> impl IntoResponse {
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let mut connection = PgConnection::establish(&database_url)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
+
+    let results = raw_tx
+        .limit(1)
+        .select(RawTx::as_select())
+        .filter(id.eq(board_id))
+        .load(&mut connection)
+        .expect("Error loading posts");
+
+    for row in results {
+        tracing::info!("{:#?}", &row);
+
+        let tx_string = row.tx.expect("could not find tx in row");
+
+        match serde_json::from_str::<EncodedBoard>(&tx_string) {
+            Ok(decoded_board) => {
+
+                tracing::info!("Board decoded");
+        
+                // tracing::info!("{:?}", decoded_board.Board);
+        
+            },
+            Err(e) => tracing::info!("Failed to deserialize state log, error: {}", e),
+        }
+    }
+
+}
 
 
 pub fn establish_connection() -> PgConnection {
