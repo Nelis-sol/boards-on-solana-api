@@ -6,7 +6,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use tokio_postgres::NoTls;
 
 use dotenv::dotenv;
 use std::{env, str::FromStr};
@@ -15,6 +14,10 @@ mod models;
 use crate::models::raw_tx::*;
 use serde::{Serialize, Deserialize};
 
+mod schema;
+use schema::raw_tx::dsl::*;
+use diesel::prelude::*;
+use diesel::pg::PgConnection;
 
 
 
@@ -53,9 +56,18 @@ async fn health_check() -> impl IntoResponse {
 async fn update_board(
     Json(payload): Json<RawTransactions>,
 ) -> impl IntoResponse {
-    
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    tracing::info!("{}", database_url);
+
+    let connection = &mut establish_connection();
+    let results = raw_tx
+        .limit(1)
+        .select(RawTx::as_select())
+        .load(connection)
+        .expect("Error loading posts");
+
+    for transaction in results {
+        tracing::info!("{:#?}", transaction);
+    }
+
 
     for transaction in payload.0 {
 
@@ -78,40 +90,6 @@ async fn update_board(
 
             let log_message = log.trim_start_matches("Program log: ");
 
-            tracing::info!("B");
-
-            
-            // Connect to the database.
-            let (client, connection) =
-                tokio_postgres::connect(&database_url, NoTls)
-                    .await
-                    .expect("could not connect to databse");
-
-            tracing::info!("C");
-
-            // The connection object performs the actual communication with the database,
-            // so spawn it off to run on its own.
-            tokio::spawn(async move {
-                if let Err(e) = connection.await {
-                    eprintln!("connection error: {}", e);
-                }
-            });
-
-            tracing::info!("D");
-
-            // Now we can execute a simple statement that just returns its parameter.
-            let rows = client
-                .query("SELECT * FROM helius", &[])
-                .await
-                .unwrap();
-
-            tracing::info!("E");
-
-            // And then check that we got back the same string we sent over.
-            let value: &str = rows[0].get(0);
-
-            tracing::info!("Query result: {}", value);
-
             // Deserialize JSON log messages
             match serde_json::from_str::<EncodedBoard>(log_message) {
                 Ok(decoded_board) => {
@@ -129,6 +107,13 @@ async fn update_board(
 }
 
 
+
+pub fn establish_connection() -> PgConnection {
+
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    PgConnection::establish(&database_url)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
+}
 
 
 

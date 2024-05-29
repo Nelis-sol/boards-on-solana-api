@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use diesel::prelude::*;
+use std::time::SystemTime;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Meta {
@@ -52,4 +54,15 @@ pub struct Card {
     pub card_id: u32,
     pub list_id: u32,
     pub bounty: u64,
+}
+
+
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = crate::schema::raw_tx)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+#[derive(Debug)]
+pub struct RawTx {
+    pub id: i32,
+    pub tx: Option<String>,
+    pub ts: SystemTime,
 }
