@@ -32,8 +32,8 @@ async fn main() {
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
-        .route("construct_tx", post(construct_tx))
-        .route("post_tx", post(post_tx))
+        .route("/construct_tx", post(construct_tx))
+        .route("/post_tx", post(post_tx))
         .route("/health_check", get(health_check));
         // .route("/raw_tx", post(insert_raw_tx))
         // .route("/board/:id", get(get_board));
