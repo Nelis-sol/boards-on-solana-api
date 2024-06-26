@@ -32,7 +32,8 @@ async fn main() {
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
-        .route("tx", post(post_tx))
+        .route("construct_tx", post(construct_tx))
+        .route("post_tx", post(post_tx))
         .route("/health_check", get(health_check))
         .route("/raw_tx", post(insert_raw_tx))
         .route("/board/:id", get(get_board));
@@ -57,13 +58,19 @@ async fn health_check() -> impl IntoResponse {
     StatusCode::OK
 }
 
-async fn post_tx(
+async fn construct_tx(
     Json(payload): Json<Value>,
 ) -> impl IntoResponse {
 
     let byte_response = b"Hello world";
 
     Json(byte_response).into_response()
+}
+
+
+async fn post_tx() -> impl IntoResponse {
+
+    StatusCode::OK
 }
 
 
