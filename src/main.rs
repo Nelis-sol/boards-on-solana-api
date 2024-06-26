@@ -14,6 +14,7 @@ use std::{env, str::FromStr};
 mod models;
 use crate::models::raw_tx::*;
 use serde::{Serialize, Deserialize};
+use serde_json::Value;
 
 mod schema;
 use schema::raw_tx::dsl::*;
@@ -31,6 +32,7 @@ async fn main() {
     // build our application with a route
     let app = Router::new()
         .route("/", get(root))
+        .route("tx", post(post_tx))
         .route("/health_check", get(health_check))
         .route("/raw_tx", post(insert_raw_tx))
         .route("/board/:id", get(get_board));
@@ -54,6 +56,17 @@ async fn health_check() -> impl IntoResponse {
 
     StatusCode::OK
 }
+
+async fn post_tx(
+    Json(payload): Json<Value>,
+) -> impl IntoResponse {
+
+    let byte_response = b"Hello world";
+
+    Json(byte_response).into_response()
+}
+
+
 
 async fn insert_raw_tx(
     Json(payload): Json<RawTransactions>,
@@ -84,6 +97,26 @@ async fn insert_raw_tx(
 
 
         let state_log_clean = state_log.trim_start_matches("Program log: ").to_string();
+
+        let mut board: Board = Board {
+            seed: 12,
+            url: String::from("A"),
+            members: vec![String::from("None")],
+            lists: vec![List{list_id: 1, name: String::from("A"), bounty_payout_percentage: 0}],
+            cards: vec![Card{card_id: 1, list_id: 1, bounty: 0}],
+            currency: String::from("None")
+        };
+
+        match serde_json::from_str::<EncodedBoard>(&state_log_clean) {
+            Ok(decoded_board) => {
+    
+                board = decoded_board.Board.clone();
+    
+                tracing::info!("{:?}", decoded_board.Board);
+    
+            },
+            Err(e) => tracing::info!("Failed to deserialize state log, error: {}", e),
+        }
 
         let new_log = NewRawTx {
             ix: instruction_log,
