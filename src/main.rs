@@ -22,6 +22,19 @@ use diesel::prelude::*;
 use diesel::pg::PgConnection;
 
 
+use solana_rpc_client::rpc_client::RpcClient;
+use solana_sdk::{
+    pubkey::Pubkey,
+    signature::{Signature, Keypair, Signer},
+    system_instruction,
+    transaction::Transaction,
+    message::Message,
+};
+
+use borsh::BorshDeserialize;
+
+
+
 
 #[tokio::main]
 async fn main() {
@@ -62,13 +75,64 @@ async fn construct_tx(
     Json(payload): Json<Value>,
 ) -> impl IntoResponse {
 
-    let byte_response = b"Hello world";
+    // Define the RPC client
+    let rpc_url = "https://api.mainnet-beta.solana.com";
+    let client = RpcClient::new(rpc_url.to_string());
 
-    Json(byte_response).into_response()
+    let sender = payload.get("sender").expect("could not find sender field in json").as_str().unwrap();
+    let receiver = payload.get("receiver").expect("could not find receiver field in json").as_str().unwrap();
+
+    // Define the sender and receiver public keys
+    let sender_pubkey = Pubkey::from_str(sender).expect("Failed to parse sender public key");
+    let receiver_pubkey = Pubkey::from_str(receiver).expect("Failed to parse receiver public key");
+
+    // Create the instruction to transfer 0.0001 SOL (1 SOL = 1_000_000_000 lamports)
+    let lamports_to_transfer = 100_000;
+    let transfer_instruction = system_instruction::transfer(&sender_pubkey, &receiver_pubkey, lamports_to_transfer);
+
+    // Create the message
+    let message = Message::new(&[transfer_instruction], Some(&sender_pubkey));
+
+    // Create the unsigned transaction
+    let recent_blockhash = client.get_latest_blockhash().expect("Failed to get recent blockhash");
+    let mut transaction = Transaction::new_unsigned(message);
+    transaction.message.recent_blockhash = recent_blockhash;
+
+    let serialised_message = transaction.message.serialize();
+    let serialised_message_base64 = base64::encode(serialised_message);
+
+    Json(serialised_message_base64).into_response()
 }
 
 
-async fn post_tx() -> impl IntoResponse {
+async fn post_tx(
+    Json(payload): Json<Value>,
+) -> impl IntoResponse {
+
+    // let rpc_url = "https://api.mainnet-beta.solana.com";
+    // let client = RpcClient::new(rpc_url.to_string());
+
+    // let message_str = payload.get("message").expect("could not find transaction field in json").as_str().unwrap();
+    // let external_signature_str = payload.get("signature").expect("could not find signature field in json").as_str().unwrap();
+
+    // // Decode the base64 message string to bytes
+    // let message_bytes = base64::decode(message_str).expect("Failed to decode base64 serialized message");
+
+    // // Deserialize the bytes to a Message object using Borsh
+    // let message: Message = BorshDeserialize::try_from_slice(&message_bytes).expect("Failed to deserialize message");
+
+
+
+    // let external_signature = Signature::from_str(external_signature_str).expect("Failed to parse external signature");
+
+    // // Attach the external signature to the transaction
+    // transaction.signatures.push(external_signature);
+
+    // // Send the signed transaction
+    // let signature = client.send_and_confirm_transaction(&transaction).expect("Failed to send transaction");
+
+
+    // Json(signature).into_response()
 
     StatusCode::OK
 }
