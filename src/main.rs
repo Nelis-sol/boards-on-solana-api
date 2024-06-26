@@ -34,9 +34,9 @@ async fn main() {
         .route("/", get(root))
         .route("construct_tx", post(construct_tx))
         .route("post_tx", post(post_tx))
-        .route("/health_check", get(health_check))
-        .route("/raw_tx", post(insert_raw_tx))
-        .route("/board/:id", get(get_board));
+        .route("/health_check", get(health_check));
+        // .route("/raw_tx", post(insert_raw_tx))
+        // .route("/board/:id", get(get_board));
 
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
@@ -75,163 +75,163 @@ async fn post_tx() -> impl IntoResponse {
 
 
 
-async fn insert_raw_tx(
-    Json(payload): Json<RawTransactions>,
-) -> impl IntoResponse {
+// async fn insert_raw_tx(
+//     Json(payload): Json<RawTransactions>,
+// ) -> impl IntoResponse {
 
-    for transaction in payload.0 {
+//     for transaction in payload.0 {
 
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        let mut connection = PgConnection::establish(&database_url)
-            .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
-
-
-        let instruction_log = transaction
-            .meta
-            .logMessages
-            .iter()
-            .find(|msg| msg.starts_with("Program log: Instruction:"))
-            .unwrap()
-            .to_string();
-
-        let state_log = transaction
-            .meta
-            .logMessages
-            .iter()
-            .find(|msg| !msg.starts_with("Program log: Instruction:") && msg.starts_with("Program log"))
-            .unwrap()
-            .to_string();
+//         let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+//         let mut connection = PgConnection::establish(&database_url)
+//             .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
 
 
-        let state_log_clean = state_log.trim_start_matches("Program log: ").to_string();
+//         let instruction_log = transaction
+//             .meta
+//             .logMessages
+//             .iter()
+//             .find(|msg| msg.starts_with("Program log: Instruction:"))
+//             .unwrap()
+//             .to_string();
 
-        let mut board: Board = Board {
-            seed: 12,
-            url: String::from("A"),
-            members: vec![String::from("None")],
-            lists: vec![List{list_id: 1, name: String::from("A"), bounty_payout_percentage: 0}],
-            cards: vec![Card{card_id: 1, list_id: 1, bounty: 0}],
-            currency: String::from("None")
-        };
+//         let state_log = transaction
+//             .meta
+//             .logMessages
+//             .iter()
+//             .find(|msg| !msg.starts_with("Program log: Instruction:") && msg.starts_with("Program log"))
+//             .unwrap()
+//             .to_string();
 
-        match serde_json::from_str::<EncodedBoard>(&state_log_clean) {
-            Ok(decoded_board) => {
+
+//         let state_log_clean = state_log.trim_start_matches("Program log: ").to_string();
+
+//         let mut board: Board = Board {
+//             seed: 12,
+//             url: String::from("A"),
+//             members: vec![String::from("None")],
+//             lists: vec![List{list_id: 1, name: String::from("A"), bounty_payout_percentage: 0}],
+//             cards: vec![Card{card_id: 1, list_id: 1, bounty: 0}],
+//             currency: String::from("None")
+//         };
+
+//         match serde_json::from_str::<EncodedBoard>(&state_log_clean) {
+//             Ok(decoded_board) => {
     
-                board = decoded_board.Board.clone();
+//                 board = decoded_board.Board.clone();
     
-                tracing::info!("{:?}", decoded_board.Board);
+//                 tracing::info!("{:?}", decoded_board.Board);
     
-            },
-            Err(e) => tracing::info!("Failed to deserialize state log, error: {}", e),
-        }
+//             },
+//             Err(e) => tracing::info!("Failed to deserialize state log, error: {}", e),
+//         }
 
-        let new_log = NewRawTx {
-            ix: instruction_log,
-            tx: state_log_clean,
-        };
+//         let new_log = NewRawTx {
+//             ix: instruction_log,
+//             tx: state_log_clean,
+//         };
 
-        diesel::insert_into(raw_tx)
-            .values(&new_log)
-            .execute(&mut connection).unwrap();
+//         diesel::insert_into(raw_tx)
+//             .values(&new_log)
+//             .execute(&mut connection).unwrap();
 
-    }
+//     }
 
-    StatusCode::OK
-}
-
-
-async fn get_board(
-    Path(board_id): Path<i32>,
-) -> impl IntoResponse {
-
-    tracing::info!("Request received for board: {:?}", board_id);
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let mut connection = PgConnection::establish(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
-
-    let results = raw_tx
-        .limit(1)
-        .select(RawTx::as_select())
-        .filter(id.eq(board_id))
-        .load(&mut connection)
-        .expect("Error loading posts");
-
-    let raw_transaction: RawTx = results[0].clone();
-
-    let mut board: Board = Board {
-        seed: 12,
-        url: String::from("A"),
-        members: vec![String::from("None")],
-        lists: vec![List{list_id: 1, name: String::from("A"), bounty_payout_percentage: 0}],
-        cards: vec![Card{card_id: 1, list_id: 1, bounty: 0}],
-        currency: String::from("None")
-    };
-
-
-    match serde_json::from_str::<EncodedBoard>(&raw_transaction.tx.unwrap()) {
-        Ok(decoded_board) => {
-
-            board = decoded_board.Board.clone();
-
-            tracing::info!("{:?}", decoded_board.Board);
-
-        },
-        Err(e) => tracing::info!("Failed to deserialize state log, error: {}", e),
-    }
-
-    tracing::info!("Response: {:?}", board.clone());
-
-    Json(board).into_response()
-
-
-}
-
-
-pub fn establish_connection() -> PgConnection {
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
-}
-
-
-
-/// Utility function for mapping any error into a `500 Internal Server Error`
-/// response.
-fn internal_error<E>(err: E) -> (StatusCode, String)
-where
-    E: std::error::Error,
-{
-    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-}
-
-
-// For a get endpoint
-//  
-// let results = raw_tx
-//     .limit(1)
-//     .select(RawTx::as_select())
-//     .load(connection)
-//     .expect("Error loading posts");
-
-// for transaction in results {
-//     tracing::info!("{:#?}", transaction);
+//     StatusCode::OK
 // }
 
-    // // Process and log the state logs
-    // for log in state_logs {
-    //     tracing::info!("A");
 
-    //     let log_message = log.trim_start_matches("Program log: ");
+// async fn get_board(
+//     Path(board_id): Path<i32>,
+// ) -> impl IntoResponse {
 
-    //     // Deserialize JSON log messages
-    //     match serde_json::from_str::<EncodedBoard>(log_message) {
-    //         Ok(decoded_board) => {
+//     tracing::info!("Request received for board: {:?}", board_id);
 
-    //             // tracing::info!("{:?}", decoded_board.Board);
+//     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+//     let mut connection = PgConnection::establish(&database_url)
+//         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
 
-    //         },
-    //         Err(e) => tracing::info!("Failed to deserialize state log: {}, error: {}", log_message, e),
-    //     }
-    // }
+//     let results = raw_tx
+//         .limit(1)
+//         .select(RawTx::as_select())
+//         .filter(id.eq(board_id))
+//         .load(&mut connection)
+//         .expect("Error loading posts");
+
+//     let raw_transaction: RawTx = results[0].clone();
+
+//     let mut board: Board = Board {
+//         seed: 12,
+//         url: String::from("A"),
+//         members: vec![String::from("None")],
+//         lists: vec![List{list_id: 1, name: String::from("A"), bounty_payout_percentage: 0}],
+//         cards: vec![Card{card_id: 1, list_id: 1, bounty: 0}],
+//         currency: String::from("None")
+//     };
+
+
+//     match serde_json::from_str::<EncodedBoard>(&raw_transaction.tx.unwrap()) {
+//         Ok(decoded_board) => {
+
+//             board = decoded_board.Board.clone();
+
+//             tracing::info!("{:?}", decoded_board.Board);
+
+//         },
+//         Err(e) => tracing::info!("Failed to deserialize state log, error: {}", e),
+//     }
+
+//     tracing::info!("Response: {:?}", board.clone());
+
+//     Json(board).into_response()
+
+
+// }
+
+
+// pub fn establish_connection() -> PgConnection {
+
+//     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+//     PgConnection::establish(&database_url)
+//         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
+// }
+
+
+
+// /// Utility function for mapping any error into a `500 Internal Server Error`
+// /// response.
+// fn internal_error<E>(err: E) -> (StatusCode, String)
+// where
+//     E: std::error::Error,
+// {
+//     (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+// }
+
+
+// // For a get endpoint
+// //  
+// // let results = raw_tx
+// //     .limit(1)
+// //     .select(RawTx::as_select())
+// //     .load(connection)
+// //     .expect("Error loading posts");
+
+// // for transaction in results {
+// //     tracing::info!("{:#?}", transaction);
+// // }
+
+//     // // Process and log the state logs
+//     // for log in state_logs {
+//     //     tracing::info!("A");
+
+//     //     let log_message = log.trim_start_matches("Program log: ");
+
+//     //     // Deserialize JSON log messages
+//     //     match serde_json::from_str::<EncodedBoard>(log_message) {
+//     //         Ok(decoded_board) => {
+
+//     //             // tracing::info!("{:?}", decoded_board.Board);
+
+//     //         },
+//     //         Err(e) => tracing::info!("Failed to deserialize state log: {}, error: {}", log_message, e),
+//     //     }
+//     // }
