@@ -13,7 +13,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dotenv = "0.15.0"
 diesel = {version="2.1.6", features = ["postgres"] }
-solana-sdk = "2.0.1"
-solana-rpc-client = "2.0.1"
+solana-sdk = "1.18.14"
+solana-rpc-client = "1.18.14"
 base64 = "0.22.1"
 borsh = "1.5.1"
