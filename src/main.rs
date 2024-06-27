@@ -28,7 +28,8 @@ use solana_sdk::{
     signature::{Signature, Keypair, Signer},
     system_instruction,
     transaction::Transaction,
-    message::Message,
+    message::{Message, MessageHeader},
+    hash::Hash,
 };
 
 use borsh::BorshDeserialize;
@@ -109,11 +110,11 @@ async fn post_tx(
     Json(payload): Json<Value>,
 ) -> impl IntoResponse {
 
-    // let rpc_url = "https://api.mainnet-beta.solana.com";
-    // let client = RpcClient::new(rpc_url.to_string());
+    let rpc_url = "https://api.mainnet-beta.solana.com";
+    let client = RpcClient::new(rpc_url.to_string());
 
-    // let message_str = payload.get("message").expect("could not find transaction field in json").as_str().unwrap();
-    // let external_signature_str = payload.get("signature").expect("could not find signature field in json").as_str().unwrap();
+    let message_str = payload.get("message").expect("could not find transaction field in json").as_str().unwrap();
+    let external_signature_str = payload.get("signature").expect("could not find signature field in json").as_str().unwrap();
 
     // // Decode the base64 message string to bytes
     // let message_bytes = base64::decode(message_str).expect("Failed to decode base64 serialized message");
@@ -121,6 +122,10 @@ async fn post_tx(
     // // Deserialize the bytes to a Message object using Borsh
     // let message: Message = BorshDeserialize::try_from_slice(&message_bytes).expect("Failed to deserialize message");
 
+    // match deserialize_message(message_str) {
+    //     Ok(message) => println!("{:?}", message),
+    //     Err(e) => eprintln!("Error deserializing message: {}", e),
+    // }
 
 
     // let external_signature = Signature::from_str(external_signature_str).expect("Failed to parse external signature");
@@ -299,3 +304,13 @@ async fn post_tx(
 //     //         Err(e) => tracing::info!("Failed to deserialize state log: {}, error: {}", log_message, e),
 //     //     }
 //     // }
+
+
+
+fn deserialize_message(payload: &str) -> Result<Message, serde_json::Error> {
+    let message: Message = serde_json::from_str(payload)?;
+    Ok(message)
+}
+
+
+
