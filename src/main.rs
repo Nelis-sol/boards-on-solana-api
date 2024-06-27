@@ -100,9 +100,9 @@ async fn construct_tx(
     transaction.message.recent_blockhash = recent_blockhash;
 
     let serialised_message = transaction.message.serialize();
-    let serialised_message_base64 = base64::encode(serialised_message);
+    // let serialised_message_base64 = base64::encode(serialised_message);
 
-    Json(serialised_message_base64).into_response()
+    Json(serialised_message).into_response()
 }
 
 
